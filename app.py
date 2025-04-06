@@ -110,4 +110,7 @@ def generate_prep_plan_route():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Get port from environment variable or default to 5000
+    port = int(os.environ.get("PORT", 5000))
+    # Run app with host set to '0.0.0.0' for deployment
+    app.run(host="0.0.0.0", port=port, debug=False)
