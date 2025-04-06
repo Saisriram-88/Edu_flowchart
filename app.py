@@ -1,11 +1,16 @@
 from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
 import re
+from dotenv import load_dotenv
+import os
 
 app = Flask(__name__)
 
-# Configure API key (Replace with actual API Key)
-genai.configure(api_key="AIzaSyCKe2NbapZ4R3Gj9w9IQN1XT1mBC1TDbbY")
+# Load environment variables
+load_dotenv()
+
+# Configure API key
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 def generate_explanation(topic, level):
