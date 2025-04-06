@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Learning Path Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.3.0/mermaid.min.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary-color: #4361ee;
+        --secondary-color: #3f37c9;
+        --accent-color: #4cc9f0;
+        --success-color: #4ade80;
+        --warning-color: #fbbf24;
+        --danger-color: #f87171;
+        --light-color: #f9fafb;
+        --dark-color: #1f2937;
+        --gray-color: #9ca3af;
+        --border-radius: 10px;
+        --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: var(--dark-color);
+        background-color: #f0f4f8;
+        padding: 0;
+        margin: 0;
+      }
+
+      .navbar {
+        background: linear-gradient(
+          90deg,
+          var(--primary-color),
+          var(--secondary-color)
+        );
+        color: white;
+        padding: 1rem 2rem;
+        box-shadow: var(--box-shadow);
+      }
+
+      .navbar h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1.5rem;
+      }
+
+      .card {
+        background-color: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--box-shadow);
+        margin-bottom: 2rem;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+
+      .card-header {
+        background: linear-gradient(
+          135deg,
+          var(--primary-color) 0%,
+          var(--secondary-color) 100%
+        );
+        color: white;
+        padding: 1.5rem;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .card-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .card-body {
+        padding: 1.5rem;
+      }
+
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--dark-color);
+      }
+
+      input,
+      select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        transition: border 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.3);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .btn-primary {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background-color: var(--secondary-color);
+        transform: translateY(-2px);
+      }
+
+      .btn-block {
+        width: 100%;
+      }
+
+      .tabs {
+        display: flex;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 1.5rem;
+      }
+
+      .tab {
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .days-input {
+        background-color: #f9fafb;
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+        border: 1px solid #e5e7eb;
+      }
+
+      #prep-plan-text {
+        white-space: pre-line;
+        padding: 1rem;
+        background-color: #f9fafb;
+        border-radius: var(--border-radius);
+        border: 1px solid #e5e7eb;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        color: var(--gray-color);
+      }
+
+      .loading-spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-left: 4px solid var(--primary-color);
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin-right: 1rem;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .alert {
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .alert-danger {
+        background-color: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+      }
+
+      .alert-success {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+      }
+
+      .mermaid {
+        padding: 1rem;
+        background-color: white;
+        border-radius: var(--border-radius);
+        overflow-x: auto;
+        width: 100%;
+        min-height: 600px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .mermaid svg {
+        min-width: 800px;
+        min-height: 600px;
+      }
+
+      /* Tooltip styles */
+      .tooltip {
+        position: relative;
+        display: inline-block;
+      }
+
+      .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 200px;
+        background-color: var(--dark-color);
+        color: white;
+        text-align: center;
+        padding: 0.5rem;
+        border-radius: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 0.875rem;
+      }
+
+      .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      /* Responsive styles */
+      @media (max-width: 768px) {
+        .card-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
+        }
+
+        .tabs {
+          flex-wrap: wrap;
+        }
+
+        .tab {
+          flex: 1;
+          justify-content: center;
+          text-align: center;
+        }
+      }
+
+      /* Footer styles */
+      footer {
+        background-color: var(--dark-color);
+        color: white;
+        padding: 2rem 0;
+        margin-top: 3rem;
+      }
+
+      .footer-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar">
+      <h1><i class="fas fa-route"></i> Learning Path Generator</h1>
+    </nav>
+
+    <div class="container">
+      <!-- Input Form -->
+      <div class="card" id="input-card">
+        <div class="card-header">
+          <h2><i class="fas fa-book"></i> Create Your Learning Journey</h2>
+        </div>
+        <div class="card-body">
+          <div id="form-alerts"></div>
+
+          <div class="form-group">
+            <label for="topic"
+              ><i class="fas fa-lightbulb"></i> What would you like to
+              learn?</label
+            >
+            <input
+              type="text"
+              id="topic"
+              placeholder="e.g., Machine Learning, Web Development, Data Science"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="level"
+              ><i class="fas fa-layer-group"></i> Your Current Experience
+              Level</label
+            >
+            <select id="level">
+              <option value="Beginner">Beginner (No prior knowledge)</option>
+              <option value="Intermediate">
+                Intermediate (Some experience)
+              </option>
+              <option value="Expert">
+                Expert (Advanced knowledge seeking mastery)
+              </option>
+            </select>
+          </div>
+
+          <button
+            onclick="generateFlowchart()"
+            class="btn btn-primary btn-block"
+          >
+            <i class="fas fa-project-diagram"></i> Generate Learning Path
+          </button>
+        </div>
+      </div>
+
+      <!-- Flowchart Section -->
+      <div class="card hidden" id="flowchart-container">
+        <div class="card-header">
+          <h2><i class="fas fa-project-diagram"></i> Your Learning Path</h2>
+          <div class="tooltip">
+            <i class="fas fa-question-circle"></i>
+            <span class="tooltiptext"
+              >This flowchart shows the recommended steps to learn your selected
+              topic</span
+            >
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="flowchart-alerts"></div>
+          <div id="flowchart" class="mermaid-container"></div>
+
+          <div class="days-input">
+            <h3><i class="fas fa-calendar-alt"></i> Create Your Schedule</h3>
+            <p>Let's break down these steps into a manageable daily plan.</p>
+            <div class="form-group">
+              <label for="days">Number of days available for learning</label>
+              <input type="number" id="days" min="1" placeholder="e.g., 30" />
+            </div>
+            <button onclick="generatePrepPlan()" class="btn btn-primary">
+              <i class="fas fa-tasks"></i> Create Preparation Plan
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preparation Plan Section -->
+      <div class="card hidden" id="plan-container">
+        <div class="card-header">
+          <h2><i class="fas fa-tasks"></i> Your Preparation Plan</h2>
+          <div class="tooltip">
+            <i class="fas fa-question-circle"></i>
+            <span class="tooltiptext"
+              >This plan breaks down your learning journey into manageable daily
+              tasks</span
+            >
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="plan-alerts"></div>
+
+          <div class="tabs">
+            <div class="tab active" onclick="switchTab('visual')">
+              <i class="fas fa-chart-pie"></i> Visual Plan
+            </div>
+            <div class="tab" onclick="switchTab('text')">
+              <i class="fas fa-list-ul"></i> Text Plan
+            </div>
+          </div>
+
+          <div class="tab-content active" id="visual-tab">
+            <div id="prep-plan-visual"></div>
+          </div>
+
+          <div class="tab-content" id="text-tab">
+            <div id="prep-plan-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-content">
+        <p>© 2025 Learning Path Generator</p>
+      </div>
+    </footer>
+
+    <script>
+      let currentSteps = [];
+      let currentPlan = "";
+
+      // Initialize mermaid with auto-formatting on
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "default",
+        flowchart: {
+          useMaxWidth: true,
+          curve: "basis",
+        },
+      });
+
+      function showAlert(containerId, message, type = "danger") {
+        const alertsContainer = document.getElementById(containerId);
+        alertsContainer.innerHTML = `
+          <div class="alert alert-${type}">
+            <i class="fas fa-${
+              type === "danger" ? "exclamation-circle" : "check-circle"
+            }"></i>
+            ${message}
+          </div>
+        `;
+
+        // Clear alert after 5 seconds
+        setTimeout(() => {
+          alertsContainer.innerHTML = "";
+        }, 5000);
+      }
+
+      function showLoading(elementId) {
+        document.getElementById(elementId).innerHTML = `
+          <div class="loading">
+            <div class="loading-spinner"></div>
+            <div>Processing your request...</div>
+          </div>
+        `;
+      }
+
+      function switchTab(tabName) {
+        // Hide all tabs and content
+        document
+          .querySelectorAll(".tab")
+          .forEach((tab) => tab.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((content) => content.classList.remove("active"));
+
+        // Show selected tab and content
+        if (tabName === "visual") {
+          document.querySelector(".tab:nth-child(1)").classList.add("active");
+          document.getElementById("visual-tab").classList.add("active");
+        } else {
+          document.querySelector(".tab:nth-child(2)").classList.add("active");
+          document.getElementById("text-tab").classList.add("active");
+        }
+      }
+
+      async function generateFlowchart() {
+        const topic = document.getElementById("topic").value;
+        const level = document.getElementById("level").value;
+
+        if (!topic) {
+          showAlert("form-alerts", "Please enter a topic!");
+          return;
+        }
+
+        showLoading("flowchart");
+        document
+          .getElementById("flowchart-container")
+          .classList.remove("hidden");
+        document.getElementById("plan-container").classList.add("hidden");
+
+        try {
+          const response = await fetch("/generate_flowchart", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ topic, level }),
+          });
+
+          const data = await response.json();
+
+          if (data.error) {
+            showAlert("flowchart-alerts", "Error: " + data.error);
+            return;
+          }
+
+          // Store the raw steps
+          currentSteps = data.steps.split("\n").filter((step) => step.trim());
+
+          // Create simplified Mermaid diagram
+          let mermaidCode = "graph TD\n";
+
+          currentSteps.forEach((step, i) => {
+            const cleanStep = step.trim().replace(/[^\w\s\-(),.]/g, "");
+            mermaidCode += `    step${i}["${cleanStep}"]\n`;
+            if (i < currentSteps.length - 1) {
+              mermaidCode += `    step${i}-->step${i + 1}\n`;
+            }
+          });
+
+          const flowchartElement = document.getElementById("flowchart");
+          flowchartElement.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
+
+          mermaid.initialize({
+            startOnLoad: true,
+            securityLevel: "loose",
+            flowchart: {
+              useMaxWidth: false,
+              htmlLabels: true,
+              curve: "basis",
+              nodeSpacing: 100,
+              rankSpacing: 100,
+            },
+          });
+
+          try {
+            await mermaid.run();
+          } catch (mermaidError) {
+            console.error("Mermaid error:", mermaidError);
+            flowchartElement.innerHTML =
+              '<div class="alert alert-danger">Could not render flowchart. Please try again.</div>';
+          }
+
+          document.getElementById("flowchart-container").scrollIntoView({
+            behavior: "smooth",
+          });
+        } catch (error) {
+          console.error("Error:", error);
+          showAlert(
+            "flowchart-alerts",
+            "An error occurred while generating the flowchart"
+          );
+        }
+      }
+
+      async function generatePrepPlan() {
+        const days = document.getElementById("days").value;
+        const topic = document.getElementById("topic").value;
+        const level = document.getElementById("level").value;
+
+        if (!days || days < 1) {
+          showAlert("flowchart-alerts", "Please enter a valid number of days!");
+          return;
+        }
+
+        if (!currentSteps || currentSteps.length === 0) {
+          showAlert("flowchart-alerts", "Please generate a flowchart first!");
+          return;
+        }
+
+        showLoading("prep-plan-text");
+        showLoading("prep-plan-visual");
+        document.getElementById("plan-container").classList.remove("hidden");
+
+        try {
+          const response = await fetch("/generate_prep_plan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topic,
+              level,
+              steps: currentSteps.join("\n"),
+              days: parseInt(days),
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.error) {
+            showAlert("plan-alerts", "Error: " + data.error);
+            return;
+          }
+
+          // Store the plan
+          currentPlan = data.plan;
+
+          // Update text view
+          document.getElementById("prep-plan-text").innerHTML = data.plan;
+
+          // Create visual plan with pie chart
+          createPlanVisualization(data.plan, parseInt(days));
+
+          document.getElementById("plan-container").scrollIntoView({
+            behavior: "smooth",
+          });
+        } catch (error) {
+          console.error("Error:", error);
+          showAlert(
+            "plan-alerts",
+            "An error occurred while generating the preparation plan"
+          );
+        }
+      }
+
+      function createPlanVisualization(planText, totalDays) {
+        // Parse the plan text to extract day information
+        const dayRegex = /Day (\d+):(.*?)(?=Day \d+:|$)/gs;
+        const matches = [...planText.matchAll(dayRegex)];
+
+        // Create data for pie chart
+        let pieData = [];
+
+        if (matches.length > 0) {
+          // Extract steps for each day
+          matches.forEach((match) => {
+            const day = match[1];
+            const content = match[2];
+
+            // Extract step numbers
+            const stepMatches = content.match(/Step \d+/g) || [];
+            const stepCount = stepMatches.length;
+
+            if (stepCount > 0) {
+              pieData.push({
+                day: parseInt(day),
+                label: `Day ${day} (${stepCount} step${
+                  stepCount > 1 ? "s" : ""
+                })`,
+                value: stepCount,
+              });
+            }
+          });
+        } else {
+          // Fallback if regex parsing fails
+          document.getElementById("prep-plan-visual").innerHTML =
+            '<div class="alert alert-danger">Unable to parse plan data for visualization. Please check the text view.</div>';
+          return;
+        }
+
+        // Generate pie chart code
+        if (pieData.length > 0) {
+          let pieChartCode = `pie showData title "Daily Step Distribution"\n`;
+
+          pieData.forEach((item) => {
+            pieChartCode += `"${item.label}": ${item.value}\n`;
+          });
+
+          const visualElement = document.getElementById("prep-plan-visual");
+          visualElement.innerHTML = `<div class="mermaid">${pieChartCode}</div>`;
+
+          // Re-initialize mermaid
+          mermaid.init(undefined, visualElement.querySelectorAll(".mermaid"));
+        } else {
+          document.getElementById("prep-plan-visual").innerHTML =
+            '<div class="alert alert-danger">No data available for visualization. Please check the text view.</div>';
+        }
+      }
+    </script>
+  </body>
+</html>
