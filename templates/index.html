@@ -468,7 +468,7 @@
       let currentSteps = [];
       let currentPlan = "";
 
-      // Initialize mermaid with auto-formatting on
+      // Initialize mermaid ONCE at the top
       mermaid.initialize({
         startOnLoad: true,
         theme: "default",
@@ -533,9 +533,7 @@
         }
 
         showLoading("flowchart");
-        document
-          .getElementById("flowchart-container")
-          .classList.remove("hidden");
+        document.getElementById("flowchart-container").classList.remove("hidden");
         document.getElementById("plan-container").classList.add("hidden");
 
         try {
@@ -557,36 +555,36 @@
 
           // Create simplified Mermaid diagram
           let mermaidCode = "graph TD\n";
-
           currentSteps.forEach((step, i) => {
             const cleanStep = step.trim().replace(/[^\w\s\-(),.]/g, "");
-            mermaidCode += `    step${i}["${cleanStep}"]\n`;
+            mermaidCode += `    step${i}[\"${cleanStep}\"]\n`;
             if (i < currentSteps.length - 1) {
               mermaidCode += `    step${i}-->step${i + 1}\n`;
             }
           });
 
           const flowchartElement = document.getElementById("flowchart");
-          flowchartElement.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
-
-          mermaid.initialize({
-            startOnLoad: true,
-            securityLevel: "loose",
-            flowchart: {
-              useMaxWidth: false,
-              htmlLabels: true,
-              curve: "basis",
-              nodeSpacing: 100,
-              rankSpacing: 100,
-            },
-          });
 
           try {
-            await mermaid.run();
+            const { svg } = await mermaid.render("generatedFlowchart", mermaidCode);
+            flowchartElement.innerHTML = `<div class=\"mermaid\">${svg}</div>`;
           } catch (mermaidError) {
-            console.error("Mermaid error:", mermaidError);
-            flowchartElement.innerHTML =
-              '<div class="alert alert-danger">Could not render flowchart. Please try again.</div>';
+            // Fallback: call backend to render SVG
+            try {
+              const fallbackResp = await fetch("/render_mermaid_svg", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: mermaidCode })
+              });
+              const fallbackData = await fallbackResp.json();
+              if (fallbackData.svg) {
+                flowchartElement.innerHTML = fallbackData.svg;
+              } else {
+                flowchartElement.innerHTML = '<div class="alert alert-danger">Could not render flowchart. Please try again.</div>';
+              }
+            } catch (err) {
+              flowchartElement.innerHTML = '<div class="alert alert-danger">Could not render flowchart. Please try again.</div>';
+            }
           }
 
           document.getElementById("flowchart-container").scrollIntoView({
@@ -689,7 +687,6 @@
             }
           });
         } else {
-          // Fallback if regex parsing fails
           document.getElementById("prep-plan-visual").innerHTML =
             '<div class="alert alert-danger">Unable to parse plan data for visualization. Please check the text view.</div>';
           return;
@@ -697,17 +694,37 @@
 
         // Generate pie chart code
         if (pieData.length > 0) {
-          let pieChartCode = `pie showData title "Daily Step Distribution"\n`;
+          let pieChartCode = `pie showData title \"Daily Step Distribution\"\n`;
 
           pieData.forEach((item) => {
-            pieChartCode += `"${item.label}": ${item.value}\n`;
+            pieChartCode += `\"${item.label}\": ${item.value}\n`;
           });
 
           const visualElement = document.getElementById("prep-plan-visual");
-          visualElement.innerHTML = `<div class="mermaid">${pieChartCode}</div>`;
 
-          // Re-initialize mermaid
-          mermaid.init(undefined, visualElement.querySelectorAll(".mermaid"));
+          // Use mermaid.render for dynamic rendering
+          mermaid.render("generatedPieChart", pieChartCode)
+            .then(({ svg }) => {
+              visualElement.innerHTML = `<div class=\"mermaid\">${svg}</div>`;
+            })
+            .catch(async () => {
+              // Fallback: call backend to render SVG
+              try {
+                const fallbackResp = await fetch("/render_mermaid_svg", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ code: pieChartCode })
+                });
+                const fallbackData = await fallbackResp.json();
+                if (fallbackData.svg) {
+                  visualElement.innerHTML = fallbackData.svg;
+                } else {
+                  visualElement.innerHTML = '<div class="alert alert-danger">No data available for visualization. Please check the text view.</div>';
+                }
+              } catch (err) {
+                visualElement.innerHTML = '<div class="alert alert-danger">No data available for visualization. Please check the text view.</div>';
+              }
+            });
         } else {
           document.getElementById("prep-plan-visual").innerHTML =
             '<div class="alert alert-danger">No data available for visualization. Please check the text view.</div>';
