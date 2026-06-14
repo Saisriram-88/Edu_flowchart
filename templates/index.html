@@ -16,6 +16,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Learning Path Generator</title>
+    <link rel="icon" href="/static/favicon.ico" />
+    <link rel="apple-touch-icon" href="/static/Edu_Flowchart_Logo.png" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.3.0/mermaid.min.js"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -65,7 +67,9 @@
         line-height: 1.6;
         color: var(--gray-800);
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        background-attachment: fixed;
+        /* `fixed` attachment forces costly repaints on scroll (esp. mobile).
+           The gradient is full-viewport anyway, so plain scroll looks identical
+           and performs far better. */
         min-height: 100vh;
         padding: 0;
         margin: 0;
@@ -107,6 +111,15 @@
         -webkit-text-fill-color: transparent;
         background-clip: text;
         font-size: 2rem;
+      }
+
+      /* Logo: fixed height, width auto => never distorted regardless of the
+         source image's aspect ratio. */
+      .navbar-logo {
+        height: 40px;
+        width: auto;
+        display: block;
+        object-fit: contain;
       }
 
       .container {
@@ -399,7 +412,6 @@
       }
 
       #prep-plan-text {
-        white-space: pre-line;
         padding: 2rem;
         background: linear-gradient(135deg, var(--gray-50), white);
         border-radius: var(--border-radius-lg);
@@ -410,6 +422,60 @@
         line-height: 1.7;
         color: var(--gray-700);
         box-shadow: var(--shadow);
+      }
+
+      /* Structured text-plan hierarchy (rendered from the validated plan
+         object as real markup, not pre-formatted text). */
+      .plan-topic {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--gray-800);
+        margin-bottom: 1.25rem;
+      }
+
+      .plan-day {
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        background: white;
+        border: 1px solid var(--gray-200);
+        border-left: 4px solid var(--primary-color);
+        border-radius: var(--border-radius);
+      }
+
+      .plan-day:last-child {
+        margin-bottom: 0;
+      }
+
+      .plan-day-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--primary-dark);
+        margin-bottom: 0.5rem;
+      }
+
+      .plan-step-list {
+        margin: 0;
+        padding-left: 1.25rem;
+      }
+
+      .plan-step-list li {
+        margin-bottom: 0.35rem;
+      }
+
+      .plan-step-list li:last-child {
+        margin-bottom: 0;
+      }
+
+      .plan-buffer {
+        margin: 0;
+        color: var(--gray-500);
+        font-style: italic;
+      }
+
+      .plan-focus {
+        margin: 0.6rem 0 0;
+        font-size: 0.875rem;
+        color: var(--gray-600);
       }
 
       #prep-plan-text::-webkit-scrollbar {
@@ -512,9 +578,12 @@
         box-shadow: var(--shadow);
       }
 
+      /* Responsive SVG: scale to the container instead of forcing a fixed
+         800px width. This removes horizontal overflow on small screens and
+         the layout "jump" that a fixed min-width caused on render. */
       .mermaid svg {
-        min-width: 800px;
-        min-height: 600px;
+        max-width: 100%;
+        height: auto;
       }
 
       /* Tooltip styles */
@@ -645,11 +714,6 @@
           min-height: 400px;
         }
 
-        .mermaid svg {
-          min-width: 600px;
-          min-height: 400px;
-        }
-
         .scroll-to-top {
           bottom: 1rem;
           right: 1rem;
@@ -678,11 +742,6 @@
         .days-input {
           padding: 1rem;
         }
-
-        .mermaid svg {
-          min-width: 400px;
-          min-height: 300px;
-        }
       }
 
       /* Footer styles */
@@ -709,7 +768,9 @@
         font-weight: 400;
       }
 
-      /* Enhanced animation delays for staggered loading */
+      /* Staggered entrance. nth-child(n) with a step keeps any number of
+         cards staggered consistently (the old rules only covered the first 3,
+         so a 4th card would pop in with no delay). */
       .card:nth-child(1) {
         animation-delay: 0.1s;
       }
@@ -718,8 +779,19 @@
         animation-delay: 0.2s;
       }
 
-      .card:nth-child(3) {
+      .card:nth-child(n + 3) {
         animation-delay: 0.3s;
+      }
+
+      /* Safety net: if a user has reduced-motion enabled, the browser may skip
+         the entrance animation entirely. Without this, cards would stay stuck
+         at opacity:0 (invisible). Force them visible and drop the animation. */
+      @media (prefers-reduced-motion: reduce) {
+        .card {
+          opacity: 1;
+          transform: none;
+          animation: none;
+        }
       }
 
       /* Improved focus styles for accessibility */
@@ -742,7 +814,15 @@
   </head>
   <body>
     <nav class="navbar">
-      <h1><i class="fas fa-route"></i> Learning Path Generator</h1>
+      <h1>
+        <img
+          src="/static/Edu_Flowchart_Logo.png"
+          alt="Edu Flowchart"
+          class="navbar-logo"
+          loading="eager"
+        />
+        <span>Learning Path Generator</span>
+      </h1>
     </nav>
 
     <div class="container">
@@ -863,23 +943,79 @@
 
     <footer>
       <div class="footer-content">
-        <p>© 2025 Learning Path Generator</p>
+        <p>© 2026 Learning Path Generator</p>
       </div>
     </footer>
 
     <script>
       let currentSteps = [];
-      let currentPlan = "";
+      let currentPlan = null;
 
-      // Initialize mermaid ONCE at the top
+      // Monotonic counter so every manual render gets a unique element id.
+      // Reusing ids causes Mermaid to leave stale <svg> nodes in the DOM,
+      // which is a source of flicker and "already exists" render errors.
+      let renderSeq = 0;
+
+      // Initialize mermaid ONCE. startOnLoad:false means Mermaid never
+      // auto-scans the DOM for .mermaid nodes — we drive every render
+      // manually via mermaid.render(). This removes the double-render flicker
+      // (auto-scan + manual render fighting over the same node) while keeping
+      // the Mermaid lifecycle and our .mermaid wrappers intact.
       mermaid.initialize({
-        startOnLoad: true,
+        startOnLoad: false,
         theme: "default",
         flowchart: {
           useMaxWidth: true,
           curve: "basis",
         },
       });
+
+      // Escape any AI-generated / user-derived string before it touches the
+      // DOM. Prevents HTML/script injection from model output or topic input.
+      function escapeHtml(value) {
+        return String(value == null ? "" : value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      // Render Mermaid source to SVG and place it safely inside the given
+      // container, preserving the .mermaid wrapper. On client-side failure it
+      // falls back ONCE to the server-side Selenium renderer (degraded mode).
+      // Returns true on success, false if both paths fail.
+      async function renderMermaidInto(container, mermaidCode) {
+        if (!container || !mermaidCode || !mermaidCode.trim()) {
+          return false;
+        }
+
+        const renderId = "mermaidRender" + ++renderSeq;
+
+        try {
+          const { svg } = await mermaid.render(renderId, mermaidCode);
+          // Clear prior content, then inject the fresh SVG inside the wrapper.
+          container.innerHTML = `<div class="mermaid">${svg}</div>`;
+          return true;
+        } catch (clientError) {
+          // Last-resort fallback: server-side render (heavy; degraded mode).
+          try {
+            const resp = await fetch("/render_mermaid_svg", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code: mermaidCode }),
+            });
+            const result = await resp.json();
+            if (result && result.svg) {
+              container.innerHTML = `<div class="mermaid">${result.svg}</div>`;
+              return true;
+            }
+          } catch (serverError) {
+            /* fall through to false */
+          }
+          return false;
+        }
+      }
 
       // Scroll to top functionality
       window.addEventListener('scroll', function() {
@@ -971,41 +1107,42 @@
           }
 
           // Store the raw steps
-          currentSteps = data.steps.split("\n").filter((step) => step.trim());
+          currentSteps = (data.steps || "")
+            .split("\n")
+            .map((step) => step.trim())
+            .filter((step) => step);
 
-          // Create simplified Mermaid diagram
+          const flowchartElement = document.getElementById("flowchart");
+
+          // Validate before building the diagram — never feed Mermaid empty
+          // or undefined input.
+          if (!currentSteps.length) {
+            flowchartElement.innerHTML =
+              '<div class="alert alert-danger">No learning steps were returned. Please try a different topic.</div>';
+            return;
+          }
+
+          // Create simplified Mermaid diagram. Labels are sanitized to keep
+          // Mermaid syntax valid (it is a diagram grammar, not HTML).
           let mermaidCode = "graph TD\n";
           currentSteps.forEach((step, i) => {
-            const cleanStep = step.trim().replace(/[^\w\s\-(),.]/g, "");
+            const cleanStep = step.replace(/[^\w\s\-(),.]/g, "");
             mermaidCode += `    step${i}[\"${cleanStep}\"]\n`;
             if (i < currentSteps.length - 1) {
               mermaidCode += `    step${i}-->step${i + 1}\n`;
             }
           });
 
-          const flowchartElement = document.getElementById("flowchart");
-
-          try {
-            const { svg } = await mermaid.render("generatedFlowchart", mermaidCode);
-            flowchartElement.innerHTML = `<div class=\"mermaid\">${svg}</div>`;
-          } catch (mermaidError) {
-            // Fallback: call backend to render SVG
-            try {
-              const fallbackResp = await fetch("/render_mermaid_svg", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code: mermaidCode })
-              });
-              const fallbackData = await fallbackResp.json();
-              if (fallbackData.svg) {
-                flowchartElement.innerHTML = fallbackData.svg;
-              } else {
-                flowchartElement.innerHTML = '<div class="alert alert-danger">Could not render flowchart. Please try again.</div>';
-              }
-            } catch (err) {
-              flowchartElement.innerHTML = '<div class="alert alert-danger">Could not render flowchart. Please try again.</div>';
-            }
+          const ok = await renderMermaidInto(flowchartElement, mermaidCode);
+          if (!ok) {
+            flowchartElement.innerHTML =
+              '<div class="alert alert-danger">Could not render flowchart. Please try again.</div>';
           }
+
+          // Reset any previously generated plan so steps stay in sync with
+          // the freshly generated flowchart (prevents stale/broken states).
+          currentPlan = null;
+          document.getElementById("plan-container").classList.add("hidden");
 
           document.getElementById("flowchart-container").scrollIntoView({
             behavior: "smooth",
@@ -1057,14 +1194,25 @@
             return;
           }
 
-          // Store the plan
+          // Store the structured plan object (canonical schema:
+          // { topic, total_steps, days: [{day, title, steps[], focus}] }).
           currentPlan = data.plan;
 
-          // Update text view
-          document.getElementById("prep-plan-text").innerHTML = data.plan;
+          // Defensive: the backend always returns a valid structure, but guard
+          // anyway so the UI never renders from undefined data.
+          if (
+            !currentPlan ||
+            !Array.isArray(currentPlan.days) ||
+            currentPlan.days.length === 0
+          ) {
+            showAlert("plan-alerts", "Could not build a plan. Please try again.");
+            return;
+          }
 
-          // Create visual plan with pie chart
-          createPlanVisualization(data.plan, parseInt(days));
+          // Render both views from the SAME validated structure so the text
+          // plan and the pie chart can never disagree.
+          renderTextPlan(currentPlan);
+          await createPlanVisualization(currentPlan);
 
           document.getElementById("plan-container").scrollIntoView({
             behavior: "smooth",
@@ -1078,76 +1226,132 @@
         }
       }
 
-      function createPlanVisualization(planText, totalDays) {
-        // Parse the plan text to extract day information
-        const dayRegex = /Day (\d+):(.*?)(?=Day \d+:|$)/gs;
-        const matches = [...planText.matchAll(dayRegex)];
+      // Build the text plan as clean, structured HTML from the validated plan
+      // object. All AI-derived strings pass through escapeHtml() before they
+      // reach innerHTML — no raw model output is ever injected as HTML.
+      function renderTextPlan(plan) {
+        const container = document.getElementById("prep-plan-text");
 
-        // Create data for pie chart
-        let pieData = [];
-
-        if (matches.length > 0) {
-          // Extract steps for each day
-          matches.forEach((match) => {
-            const day = match[1];
-            const content = match[2];
-
-            // Extract step numbers
-            const stepMatches = content.match(/Step \d+/g) || [];
-            const stepCount = stepMatches.length;
-
-            if (stepCount > 0) {
-              pieData.push({
-                day: parseInt(day),
-                label: `Day ${day} (${stepCount} step${
-                  stepCount > 1 ? "s" : ""
-                })`,
-                value: stepCount,
-              });
-            }
-          });
-        } else {
-          document.getElementById("prep-plan-visual").innerHTML =
-            '<div class="alert alert-danger">Unable to parse plan data for visualization. Please check the text view.</div>';
-          return;
+        let html = "";
+        if (plan.topic) {
+          html += `<h3 class="plan-topic">${escapeHtml(plan.topic)}</h3>`;
         }
 
-        // Generate pie chart code
-        if (pieData.length > 0) {
-          let pieChartCode = `pie showData title \"Daily Step Distribution\"\n`;
+        plan.days.forEach((day) => {
+          const title = escapeHtml(day.title || `Day ${day.day}`);
+          html += `<div class="plan-day">`;
+          html += `<h4 class="plan-day-title">${title}</h4>`;
 
-          pieData.forEach((item) => {
-            pieChartCode += `\"${item.label}\": ${item.value}\n`;
-          });
-
-          const visualElement = document.getElementById("prep-plan-visual");
-
-          // Use mermaid.render for dynamic rendering
-          mermaid.render("generatedPieChart", pieChartCode)
-            .then(({ svg }) => {
-              visualElement.innerHTML = `<div class=\"mermaid\">${svg}</div>`;
-            })
-            .catch(async () => {
-              // Fallback: call backend to render SVG
-              try {
-                const fallbackResp = await fetch("/render_mermaid_svg", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ code: pieChartCode })
-                });
-                const fallbackData = await fallbackResp.json();
-                if (fallbackData.svg) {
-                  visualElement.innerHTML = fallbackData.svg;
-                } else {
-                  visualElement.innerHTML = '<div class="alert alert-danger">No data available for visualization. Please check the text view.</div>';
-                }
-              } catch (err) {
-                visualElement.innerHTML = '<div class="alert alert-danger">No data available for visualization. Please check the text view.</div>';
-              }
+          if (Array.isArray(day.steps) && day.steps.length > 0) {
+            html += `<ul class="plan-step-list">`;
+            day.steps.forEach((step) => {
+              html += `<li>${escapeHtml(step)}</li>`;
             });
+            html += `</ul>`;
+          } else {
+            // Buffer / revision day — always shown, never dropped.
+            html += `<p class="plan-buffer">Revision / Buffer day — review previous material.</p>`;
+          }
+
+          if (day.focus && day.focus !== "Revision / Buffer") {
+            html += `<p class="plan-focus"><strong>Focus:</strong> ${escapeHtml(
+              day.focus
+            )}</p>`;
+          }
+
+          html += `</div>`;
+        });
+
+        container.innerHTML = html;
+      }
+
+      // Build aggregated pie slices from the validated plan. Pure and fully
+      // deterministic: depends only on plan.days (no regex, no randomness, no
+      // backend change). Aggregation keeps the chart readable and the legend
+      // compact (at most 10 slices) for large plans:
+      //   <= 7 days   -> one slice per day
+      //   8-20 days   -> one slice per week (7-day blocks)
+      //   > 20 days   -> phase blocks sized so there are at most 10 slices
+      // Slice value is proportional to the step count in that range; the step
+      // count is baked into the label so the legend needs no extra data.
+      function buildPieSlices(plan) {
+        const days = Array.isArray(plan.days) ? plan.days : [];
+        const n = days.length;
+        const stepsOf = (d) => (Array.isArray(d.steps) ? d.steps.length : 0);
+        const plural = (c) => (c === 1 ? "step" : "steps");
+
+        // Small plans: one clean slice per day.
+        if (n <= 7) {
+          const slices = days.map((d) => {
+            const c = stepsOf(d);
+            return {
+              label:
+                c > 0
+                  ? `Day ${d.day} — ${c} ${plural(c)}`
+                  : `Day ${d.day} — Buffer`,
+              value: c > 0 ? c : 1,
+            };
+          });
+          return { slices, title: "Daily Step Distribution" };
+        }
+
+        // Large plans: aggregate into week or phase blocks.
+        let groupSize;
+        let prefix;
+        let title;
+        if (n <= 20) {
+          groupSize = 7; // 8-20 days => at most 3 week-slices
+          prefix = "Week";
+          title = "Weekly Step Distribution";
         } else {
-          document.getElementById("prep-plan-visual").innerHTML =
-            '<div class="alert alert-danger">No data available for visualization. Please check the text view.</div>';
+          // Phase blocks: pick a block size that yields at most 10 slices.
+          const numGroups = Math.min(10, n);
+          groupSize = Math.ceil(n / numGroups);
+          prefix = "Phase";
+          title = "Phase Step Distribution";
+        }
+
+        const slices = [];
+        let groupIndex = 1;
+        for (let i = 0; i < n; i += groupSize) {
+          const block = days.slice(i, i + groupSize);
+          const stepSum = block.reduce((acc, d) => acc + stepsOf(d), 0);
+          slices.push({
+            label:
+              stepSum > 0
+                ? `${prefix} ${groupIndex} — ${stepSum} ${plural(stepSum)}`
+                : `${prefix} ${groupIndex} — Buffer`,
+            value: stepSum > 0 ? stepSum : 1,
+          });
+          groupIndex++;
+        }
+        return { slices, title };
+      }
+
+      // Render the pie chart from the validated plan object. The chart is built
+      // from aggregated slices (see buildPieSlices) so it stays readable and the
+      // legend stays compact even for 40+ day plans. The text plan is unaffected.
+      async function createPlanVisualization(plan) {
+        const visualElement = document.getElementById("prep-plan-visual");
+
+        const { slices, title } = buildPieSlices(plan);
+
+        // No `showData`: with it, Mermaid appended the raw value as noisy
+        // "[N]" text in the legend. Dropping it leaves clean labels in the
+        // legend and percentages on the slices — the step count already lives
+        // inside each label (e.g. "Week 1 — 5 steps").
+        let pieChartCode = `pie title "${title}"\n`;
+        slices.forEach((item) => {
+          // Mermaid-syntax sanitization: labels are wrapped in double quotes,
+          // so strip characters that would break that grammar.
+          const safeLabel = String(item.label).replace(/["\n\r]/g, " ").trim();
+          pieChartCode += `"${safeLabel}" : ${item.value}\n`;
+        });
+
+        const ok = await renderMermaidInto(visualElement, pieChartCode);
+        if (!ok) {
+          visualElement.innerHTML =
+            '<div class="alert alert-danger">Unable to display the chart. Your plan is available in the Text Plan tab.</div>';
         }
       }
     </script>
