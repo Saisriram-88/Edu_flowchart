@@ -1,5 +1,4 @@
 flask>=3.0.0
-google-generativeai>=0.3.0
+google-generativeai>=0.8.0
 python-dotenv>=1.0.0
 selenium>=4.0.0
-# You must also install ChromeDriver and have it in your PATH for selenium to work with Chrome
